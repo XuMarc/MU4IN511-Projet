@@ -1,6 +1,6 @@
 open Int64
 
-
+(* Question 1.1 *)
 module BigInt =
 struct
   type integer = Int64.t list;; (* liste d'entiers int64 *)
@@ -12,6 +12,7 @@ struct
   let supprimer_tete (bigint : integer) : integer = List.tl bigint;;
 end
 
+(* Question 1.2 *)
 let decomposition (x : BigInt.integer) : bool list = 
   let rec inner (x : BigInt.integer) (acc : bool list) : bool list = 
     match x with 
@@ -44,6 +45,7 @@ let decomposition (x : BigInt.integer) : bool list =
   
 
   (* Exemple *)
+  print_string "Question 1.2 test\n";;
   let result = decomposition([0L]);;
   print_list result;;
   print_string "\n";;
@@ -54,3 +56,30 @@ let decomposition (x : BigInt.integer) : bool list =
   let result = decomposition([0L ; 68719476736L  ]);;
   print_list result;;
   print_string "\n";;
+
+(* Question 1.3 *)
+
+(* liste tronquée, n premiers elems *)
+let completion (l : bool list) (n : int) : bool list =
+  if n <= 0 then [] else
+  let rec inner (l : bool list) (n : int) (acc : bool list) : bool list = 
+    match l with 
+    | [] -> acc@(List.init n (fun _ -> false))
+    | h::t -> 
+      if n = 0 then acc else
+      inner t (n-1) (acc @ [h])
+  in inner l n [];;
+
+  
+
+(* Exemple *)
+print_string "\nQuestion 1.3 test\n";;
+let result = completion [false; true; true; false; false; true] 4;;
+print_list result;;
+print_string "\n";;
+let result = completion [false; true; true; false; false; true] 8;;
+print_list result;;
+print_string "\n";;
+
+
+(* Question 1.4 *)
