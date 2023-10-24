@@ -122,34 +122,32 @@ let rec pow (n : Int64.t) (e : int) : Int64.t =
 ;;
 
 (* Question 1.4 *)
-let rec composition (l : bool list) : BigInt.integer =
-  (*  *)
-  let rec inner (l : bool list) (acc : BigInt.integer) (pos : int) (nbfalse : int): BigInt.integer = 
+let composition (l : bool list) : BigInt.integer =
+  (* parcourt la liste des bools *)
+  let rec inner (l : bool list) (acc : BigInt.integer) (pos : int): BigInt.integer = 
     match l with 
     | [] -> acc
     | h::t -> 
+      (* permet d'ajouter la puissance de 2 adequate a l'accumulateur *)
       let rec add (n : BigInt.integer) (acc : BigInt.integer) (pos : int) : BigInt.integer = 
         match n with 
         | [] -> BigInt.inserer_queue (pow 2L pos) acc
         | h::t -> 
-          if h = 0L then add t (BigInt.inserer_queue h acc) pos else
-            
+          (* si on depasse la limite, on rappelle la fonction et on essaye de faire l'ajout sur la suite du nombre*)
+          if h = 0L then add t (BigInt.inserer_queue h acc) pos 
+          (* sinon on fait la somme de l'entier deja existant et la puissance de 2 *)
+          else
             BigInt.inserer_queue (Int64.add h (pow 2L pos)) acc
       in 
+      if h then inner t (add acc [] pos) (pos+1)
       
-      if h then inner t (add acc [] pos) (pos+1) nbfalse else 
-        if nbfalse = 63 then inner t (BigInt.inserer_queue 0L acc) 0 0 else
-          inner t acc (pos+1) (nbfalse+1)
+      else 
+        (* si le nb delement analysé  *)
+        if pos = 63 then inner t (BigInt.inserer_queue 0L acc) 0  else
+          inner t acc (pos+1) 
     in 
-    inner l [] 0 0
+    inner l [] 0 
     ;;
-      
-
-
-      
-
-
-
 
 
 (* Exemple *)
@@ -171,4 +169,3 @@ let result = composition test;;
 print_string "Result : ";;
 print_bigint_list result;;
 print_string "\n";;
-
