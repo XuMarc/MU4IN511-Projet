@@ -12,6 +12,31 @@ struct
   let supprimer_tete (bigint : integer) : integer = List.tl bigint;;
 end
 
+let print_bigint_list (bigint_list : BigInt.integer) : unit =
+  let rec inner (bigint_list : BigInt.integer) : unit =
+    match bigint_list with
+    | [] -> print_string "[]\n"
+    | [b] -> print_string (Int64.to_string b ^ "]\n")
+    | head :: tail ->
+      print_string (Int64.to_string head ^ "; ");
+      inner tail
+  in
+  print_string "[";
+  inner bigint_list
+;;
+
+  (* Exemple *)
+print_string "Question 1.1 test\n";;
+let result = BigInt.inserer_queue 1L [2L; 3L; 4L];;
+print_bigint_list result;;
+let result = BigInt.supprimer_tete [1L; 2L; 3L; 4L];;
+print_bigint_list result;;
+print_string "\n";;
+let result = BigInt.get_tete [1L; 2L; 3L; 4L];;
+print_string (Int64.to_string result);;
+print_string "\n";;
+
+
 (* Question 1.2 *)
 let decomposition (x : BigInt.integer) : bool list = 
   let rec inner (x : BigInt.integer) (acc : bool list) : bool list = 
@@ -43,19 +68,27 @@ let decomposition (x : BigInt.integer) : bool list =
       | h::t -> inner t (acc + (if h then 0 else 1))
     in List.iter (fun b -> print_string (if b then "1" else "0")) l; print_string "\nNumber of 0 : "; print_int (inner l 0);;
   
-
+    let rec print_bool_list bool_list =
+      match bool_list with
+      | [] -> print_string "[]\n"
+      | [b] -> print_string (string_of_bool b ^ "]\n")
+      | head :: tail ->
+        print_string (string_of_bool head ^ "; ");
+        print_bool_list tail;;
+    
   (* Exemple *)
-  print_string "Question 1.2 test\n";;
-  let result = decomposition([0L]);;
-  print_list result;;
-  print_string "\n";;
-  let result = decomposition([38L]);;
-  print_list result;;
-  print_string "\n";;
-  (* 2¹⁰⁰ *)
-  let result = decomposition([0L ; 68719476736L  ]);;
-  print_list result;;
-  print_string "\n";;
+print_string "Question 1.2 test\n";;
+let result = decomposition([0L]);;
+print_list result;;
+print_string "\n";;
+let result = decomposition([38L]);;
+print_bool_list result;;
+print_list result;;
+print_string "\n";;
+(* 2¹⁰⁰ *)
+let result = decomposition([0L ; 68719476736L  ]);;
+print_list result;;
+print_string "\n";;
 
 (* Question 1.3 *)
 
@@ -82,4 +115,60 @@ print_list result;;
 print_string "\n";;
 
 
+let rec pow (n : Int64.t) (e : int) : Int64.t =
+  if e = 0 then 1L
+  else if e mod 2 = 0 then pow (Int64.mul n n) (e / 2)
+  else Int64.mul n (pow n (e - 1))
+;;
+
 (* Question 1.4 *)
+let rec composition (l : bool list) : BigInt.integer =
+  (*  *)
+  let rec inner (l : bool list) (acc : BigInt.integer) (pos : int) (nbfalse : int): BigInt.integer = 
+    match l with 
+    | [] -> acc
+    | h::t -> 
+      let rec add (n : BigInt.integer) (acc : BigInt.integer) (pos : int) : BigInt.integer = 
+        match n with 
+        | [] -> BigInt.inserer_queue (pow 2L pos) acc
+        | h::t -> 
+          if h = 0L then add t (BigInt.inserer_queue h acc) pos else
+            
+            BigInt.inserer_queue (Int64.add h (pow 2L pos)) acc
+      in 
+      
+      if h then inner t (add acc [] pos) (pos+1) nbfalse else 
+        if nbfalse = 63 then inner t (BigInt.inserer_queue 0L acc) 0 0 else
+          inner t acc (pos+1) (nbfalse+1)
+    in 
+    inner l [] 0 0
+    ;;
+      
+
+
+      
+
+
+
+
+
+(* Exemple *)
+print_string "\nQuestion 1.4 test\n";;
+let result = composition [false; true; true; false; false; true];;
+print_string "Result : ";;
+print_bigint_list result;;
+print_string "\n";;
+(* 2¹⁰⁰ *)
+let test = decomposition([0L ; 68719476736L]);;
+let result = composition test;;
+print_string "Result : ";;
+print_bigint_list result;;
+print_string "\n";;
+let result = composition 
+(* 2²⁰⁰ *)
+let test = decomposition([0L;0L;0L;256L]);;
+let result = composition test;;
+print_string "Result : ";;
+print_bigint_list result;;
+print_string "\n";;
+
