@@ -169,3 +169,54 @@ let result = composition test;;
 print_string "Result : ";;
 print_bigint_list result;;
 print_string "\n";;
+
+(* Question 1.5 *)
+(* Je suis pas sur si c'est ce qu'on veut ? surtout la signature mhmm *)
+let table (x : int) (n : int) : bool list =
+  completion (decomposition [Int64.of_int x]) n
+;;
+
+(* avec des Int64.t *)
+let rec table2 (x : BigInt.integer) (n : BigInt.integer) : bool list =
+  let a = decomposition x in
+  (* completion a (Int64.to_int n) *)
+  match n with 
+  | [] -> []
+  | h::t -> completion a (Int64.to_int h) @ table2 x t
+;;
+
+(* Exemple *)
+print_string "\nQuestion 1.5 test\n";;
+let result = table 38 10;;
+print_list result;;
+print_string "\n";;
+print_string "\navec les int64\n";;
+let result = table2 [38L] [10L];;
+print_list result;;
+print_string "\n";;
+
+(* Question 1.6 n est un entier naturel parce que je vois pas comment divviser une liste de int64 avec 64*)
+let genAlea ( n : int) : BigInt.integer=
+  (* pour avoir des valeurs differentes a l'appel de Random.int64 *)
+  Random.self_init ();
+  (* genere la liste d'int64.t *)
+  let rec inner (n : int) (acc : BigInt.integer) : BigInt.integer = 
+    if n>63 then inner (n-64) (BigInt.inserer_queue (Random.int64 Int64.max_int) acc) else
+      if n<64 then BigInt.inserer_queue (Random.int64 (pow 2L n)) acc else
+        acc
+  in inner n []
+;;
+
+(* Exemple *)
+print_string "\nQuestion 1.6 test\n";;
+print_string "\nGenAlea sur 10\n";;
+let result = genAlea 10;;
+print_bigint_list result;;
+print_string "\n";;
+print_string "\nGenAlea sur 100\n";;
+let result = genAlea 100;;
+print_bigint_list result;;
+print_string "\n";;
+
+
+
