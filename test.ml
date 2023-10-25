@@ -3,13 +3,13 @@ open Int64
 (* Question 1.1 *)
 module BigInt =
 struct
-  type integer = Int64.t list;; (* liste d'entiers int64 *)
+  type integer = Int64.t list (* liste d'entiers int64 *)
 
-  let get_tete (bigint : integer) : Int64.t = List.hd bigint;;
+  let get_tete (bigint : integer) : Int64.t = List.hd bigint
 
-  let inserer_queue (nelem : Int64.t) (bigint : integer) : integer = bigint @ [nelem];;
+  let inserer_queue (nelem : Int64.t) (bigint : integer) : integer = bigint @ [nelem]
 
-  let supprimer_tete (bigint : integer) : integer = List.tl bigint;;
+  let supprimer_tete (bigint : integer) : integer = List.tl bigint
 end
 
 let print_bigint_list (bigint_list : BigInt.integer) : unit =
@@ -185,6 +185,8 @@ let rec table2 (x : BigInt.integer) (n : BigInt.integer) : bool list =
   | h::t -> completion a (Int64.to_int h) @ table2 x t
 ;;
 
+(* d'apres les arbres de construction  *)
+
 (* Exemple *)
 print_string "\nQuestion 1.5 test\n";;
 let result = table 38 10;;
@@ -219,4 +221,94 @@ print_bigint_list result;;
 print_string "\n";;
 
 
+
+(* Arbre de decision *)
+
+(* Question 2.7 *)
+type decision_tree =
+  | Leaf of bool
+  | Node of int * decision_tree * decision_tree
+
+(* Exercice 2.8 *)
+let cons_arbre (tab : bool list) : decision_tree =
+  let rec inner (tab : bool list) (pos : int) (taille : int): decision_tree =
+    match tab with
+    | [] -> Leaf false
+    | [b] -> Leaf b
+    | h::s::t ->
+      if taille = 2 then 
+        let g = Leaf(h) 
+        and d = Leaf(s) in
+        Node (pos, g, d)
+      else
+        let g = inner (List.init (taille/2) (fun i -> List.nth tab i)) (pos+1) (taille/2)
+        and d = inner (List.init (taille/2) (fun i -> List.nth tab (i + taille/2))) (pos+1) (taille/2) in
+        Node (pos, g, d)
+  in
+  inner tab 1 (List.length tab)
+;;
+
+let print_tree (dt : decision_tree ) : unit =
+  let rec inner (dt : decision_tree) : unit =
+    match dt with
+    | Leaf b -> print_string (string_of_bool b)
+    | Node (pos, left, right) ->
+      print_string ("(" ^ string_of_int pos ^ ", ");
+      inner left;
+      print_string ", ";
+      inner right;
+      print_string ")"
+  in
+  inner dt
+;;
+
+
+
+(* Exemple *)
+print_string "\nQuestion 2.8 test\n";;
+let mtable = completion (decomposition [25899L]) 16;;
+print_string "Table : ";;
+print_list mtable;;
+print_string "\n";;
+let result = cons_arbre mtable;;
+print_string "Result : ";;
+print_tree result;;
+print_string "\n";;
+let mtable = completion (decomposition [38L]) 8;;
+print_string "Table : ";;
+print_list mtable;;
+print_string "\n";;
+let result = cons_arbre mtable;;
+print_string "Result : ";;
+print_tree result;;
+print_string "\n";;
+
+(* Question 2.9 *)
+
+let liste_feuilles (noeud : decision_tree) : bool list =
+  let rec inner (noeud : decision_tree) (acc : bool list) : bool list =
+    match noeud with
+    | Leaf b -> b::acc
+    | Node (pos, left, right) ->
+      inner left acc @ inner right acc
+  in
+  inner noeud []
+;;
+
+(* Exemple *)
+print_string "\nQuestion 2.9 test\n";;
+let mtable = completion (decomposition [25899L]) 16;;
+print_string "Table : ";;
+print_list mtable;;
+print_string "\n";;
+let result = cons_arbre mtable;;
+print_string "Result : ";;
+print_tree result;;
+print_string "\n";;
+let result = liste_feuilles (Node (3, Node (4, Leaf true, Leaf true), Node (4, Leaf false, Leaf true)));;
+print_string "Result : ";;
+print_list result;;
+print_string "\n";;
+
+(* Exercice 3 : Compression de l'arbre de décision et ZDD *)
 
