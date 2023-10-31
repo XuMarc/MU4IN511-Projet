@@ -50,13 +50,13 @@ let decomposition (x : BigInt.integer) : bool list =
         if n = 0L then bits else 
         let bit = 
           (*on fait le "et" logique pour determiner si le bit de poids faible est 1 ou 0*)
-          if logand n 1L = 1L 
-            then true 
+          if logand n 1L = 1L then 
+            true 
           else false in
-          (* division par 2 <=> decalage vers la droite *)
-        convert_to_binary (shift_right_logical n 1) (bit :: bits)
-    in 
-      inner t (acc @ (List.rev (convert_to_binary h [])))
+            (* division par 2 <=> decalage vers la droite *)
+            convert_to_binary (shift_right_logical n 1) (bit :: bits)
+        in 
+          inner t (acc @ (List.rev (convert_to_binary h [])))
   in inner x [];;
 
 
@@ -342,7 +342,7 @@ let compressionParListe ( gt : decision_tree) (ldv : listeDejaVus) : decision_tr
   if List.for_all (fun x -> x=false) ld then 
 
 ;; *)
-
+(*
 let rec compressionParListe (arbre : decision_tree) (listeDejaVus : listeDejaVus) : decision_tree =
   match arbre with
   | Leaf b -> Leaf b
@@ -382,5 +382,104 @@ print_string "Liste de noeuds visités : ";;
 (* print_bigint_list (List.map (fun (x, y) -> x) ldv);; *)
 print_string "\n";;
 
+*)
+
 (* Question 3.2 *)
 
+
+
+(* Question 3.12 *)
+
+
+open Printf
+
+(*
+
+let rec write_dot_tree_edges tree chan parent_id =
+  match tree with
+  | Leaf b ->
+    let node_id = string_of_int (Random.int 100000) in
+    fprintf chan "%s [label=\"%b\", shape=box];\n" node_id b;
+    begin
+      match parent_id with
+      | Some p_id -> fprintf chan "%s -> %s;\n" p_id node_id
+      | None -> ()
+    end
+  | Node (feature, left, right) ->
+    let node_id = string_of_int (Random.int 100000) in
+    fprintf chan "%s [label=\"%d\"];\n" node_id feature;
+    begin
+      match parent_id with
+      | Some p_id -> fprintf chan "%s -> %s;\n" p_id node_id
+      | None -> ()
+    end;
+    write_dot_tree_edges left chan (Some node_id);
+    write_dot_tree_edges right chan (Some node_id)
+*)
+
+let rec write_dot_tree_edges (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) =
+  match tree with
+  | Leaf b ->
+    let node_id = string_of_int (Random.int 100000) in
+    let shape = "box" in
+    let color = if b then "green" else "red" in
+    fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
+    begin
+      match parent_id with
+      | Some p_id ->
+        let style = if is_right_child then "solid" else "dashed" in
+        fprintf chan "%s -> %s [style=%s];\n" p_id node_id style
+      | None -> ()
+    end
+  | Node (feature, left, right) ->
+    let node_id = string_of_int (Random.int 100000) in
+    fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id feature;
+    begin
+      match parent_id with
+      | Some p_id ->
+        let style = if is_right_child then "solid" else "dashed" in
+        fprintf chan "%s -> %s [style=%s];\n" p_id node_id style
+      | None -> ()
+    end;
+    write_dot_tree_edges left chan (Some node_id) false;
+    write_dot_tree_edges right chan (Some node_id) true
+
+let create_dot_tree (tree : decision_tree) (filename : string) =
+  let chan = open_out filename in
+  fprintf chan "digraph Tree {\n";
+  write_dot_tree_edges tree chan None false;
+  fprintf chan "}\n";
+  close_out chan
+;;
+
+
+
+let mtable = completion (decomposition [25899L]) 16;;
+print_string "Table : ";;
+print_list mtable;;
+print_string "\n";;
+let result = cons_arbre mtable
+in create_dot_tree result "./tree.dot"
+
+let rec traverse_postfix tree =
+  match tree with
+  | Leaf b -> [b]
+  | Node (_, left, right) ->
+      let left_result = traverse_postfix left in
+      let right_result = traverse_postfix right in
+      left_result @ right_result
+
+let example_tree =
+  Node (1, Leaf true, Node (2, Leaf false, Leaf true))
+
+let result = traverse_postfix example_tree
+
+type listeDejaVus = (BigInt.integer * decision_tree ref) list
+
+type decision_tree =
+  | Leaf of bool
+  | Node of int * decision_tree * decision_tree
+
+type arbreDejaVus = 
+  | Leaf of bool 
+  | Node of 
