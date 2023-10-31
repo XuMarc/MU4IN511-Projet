@@ -209,6 +209,14 @@ let genAlea ( n : int) : BigInt.integer=
   in inner n []
 ;;
 
+let rec genAleaBigInt ( n : BigInt.integer ) : BigInt.integer =
+  match n with 
+  [] -> []
+  | h::t -> 
+    genAlea (Int64.to_int h) @ genAleaBigInt t
+;;
+
+
 (* Exemple *)
 print_string "\nQuestion 1.6 test\n";;
 print_string "\nGenAlea sur 10\n";;
@@ -231,21 +239,24 @@ type decision_tree =
 
 (* Exercice 2.8 *)
 let cons_arbre (tab : bool list) : decision_tree =
-  let rec inner (tab : bool list) (pos : int) (taille : int): decision_tree =
+  (* tab : liste, pos : profondeur, taille :  *)
+  let rec inner (tab : bool list) (pos : int): decision_tree =
     match tab with
     | [] -> Leaf false
     | [b] -> Leaf b
     | h::s::t ->
-      if taille = 2 then 
+      (* on a un noeud avec 2 enfants *)
+      if List.length tab = 2 then 
         let g = Leaf(h) 
         and d = Leaf(s) in
         Node (pos, g, d)
       else
-        let g = inner (List.init (taille/2) (fun i -> List.nth tab i)) (pos+1) (taille/2)
-        and d = inner (List.init (taille/2) (fun i -> List.nth tab (i + taille/2))) (pos+1) (taille/2) in
+        (* g contient la premiere moitié de la liste et d lautre *)
+        let g = inner (List.init (List.length tab/2) (fun i -> List.nth tab i)) (pos+1) 
+        and d = inner (List.init (List.length tab /2) (fun i -> List.nth tab (i + List.length tab/2))) (pos+1)  in
         Node (pos, g, d)
   in
-  inner tab 1 (List.length tab)
+  inner tab 1 
 ;;
 
 let print_tree (dt : decision_tree ) : unit =
@@ -285,6 +296,7 @@ print_string "\n";;
 
 (* Question 2.9 *)
 
+(* liste les feuilles d'un sous noeud de l'arbre *)
 let liste_feuilles (noeud : decision_tree) : bool list =
   let rec inner (noeud : decision_tree) (acc : bool list) : bool list =
     match noeud with
@@ -311,4 +323,64 @@ print_list result;;
 print_string "\n";;
 
 (* Exercice 3 : Compression de l'arbre de décision et ZDD *)
+
+type listeDejaVus = (BigInt.integer * decision_tree ref) list
+
+(* Question 3.1 *)
+(* 
+let compressionParListe ( gt : decision_tree) (ldv : listeDejaVus) : decision_tree * listeDejaVus =
+  match gt with 
+  | Leaf b -> (Leaf b, ldv)
+  | x-> let l = liste_feuilles x in 
+  (* deuxieme moitié de l *)
+  let lg = List.init (List.length l /2) (fun i -> List.nth l (i + List.length l/2)) in
+  (* premiere moitié de l *)
+  let ld = List.init (List.length l /2) (fun i -> List.nth l i) in
+  (* on rajoute le noeud dans les neouds visité *)
+  let ldv = (lg, x)::ldv in
+  (* si la deuxieme moitié ne contient que des false on remplace le pointeur vers N vers un pointeur vers l'enfant gauche de N*)
+  if List.for_all (fun x -> x=false) ld then 
+
+;; *)
+
+let rec compressionParListe (arbre : decision_tree) (listeDejaVus : listeDejaVus) : decision_tree =
+  match arbre with
+  | Leaf b -> Leaf b
+  | Node (pos, left, right) ->
+    let liste_feuilles_N = liste_feuilles arbre in
+    let moitie_gauche, moitie_droite = List.split_at (List.length liste_feuilles_N / 2) liste_feuilles_N in
+    if List.for_all (fun b -> not b) moitie_droite then
+      compressionParListe left listeDejaVus
+    else
+      let n = composition moitie_feuilles_N in
+      match List.assoc_opt n listeDejaVus with
+      | Some compressed_tree_ref -> compressionParListe !compressed_tree_ref listeDejaVus
+      | None ->
+        let new_compressed_tree_ref = ref arbre in
+        let new_listeDejaVus = (n, new_compressed_tree_ref) :: listeDejaVus in
+        compressionParListe (Node (pos, compressionParListe left new_listeDejaVus, compressionParListe right new_listeDejaVus)) new_listeDejaVus
+;;
+
+
+
+
+(* Exemple *)
+print_string "\nQuestion 3.1 test\n";;
+let mtable = completion (decomposition [25899L]) 16;;
+print_string "Table : ";;
+print_list mtable;;
+print_string "\n";;
+let result = cons_arbre mtable;;
+print_string "Result : ";;
+print_tree result;;
+print_string "\n";;
+let (result, ldv) = compressionParListe result [];;
+print_string "Result : ";;
+print_tree result;;
+print_string "\n";;
+print_string "Liste de noeuds visités : ";;
+(* print_bigint_list (List.map (fun (x, y) -> x) ldv);; *)
+print_string "\n";;
+
+(* Question 3.2 *)
 
