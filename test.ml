@@ -368,9 +368,7 @@ print_string "\n";;
 open Printf
 
 let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string)= 
-  let rec write_dot_tree_edges (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) =
-    (* Calcul du nombre de feuilles dans l'arbre *)
-    let n = (composition (liste_feuilles tree)) in
+  let rec notCompressed (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool)=
     (* Si l'arbre n'a pas été compressé *)
     if ldv = [] then
       match tree with
@@ -398,42 +396,61 @@ let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string)=
           | None -> ()
         end;
         (* On continue la récursion sur les fils gauche et droit *)
-        write_dot_tree_edges left chan (Some node_id) false;
-        write_dot_tree_edges right chan (Some node_id) true
+        notCompressed left chan (Some node_id) false;
+        notCompressed right chan (Some node_id) true
+      in  
+  let rec write_dot_tree_edges (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) (c : string list ref)=
+    (* Calcul du nombre de feuilles dans l'arbre *)
+    let n = (composition (liste_feuilles tree)) in
     (* Si l'arbre a été compressé *)
-    else
-      match tree with 
-      | Leaf b ->
-        let node_id = (Int64.to_string (List.hd n)) in
-        let shape = "box" in
-        let color = if b then "green" else "red" in
-        fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
-        begin
-          match parent_id with
-          | Some p_id ->
-            let style = if is_right_child then "solid" else "dashed" in
-            fprintf chan "%s -> %s [style=%s];\n" p_id node_id style
-          | None -> ()
-        end
-      | Node (pos, left, right) ->
-        let node_id = (Int64.to_string (List.hd n))^"."^(string_of_int pos) in
-        fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id pos;
-        begin
-          match parent_id with
-          | Some p_id ->
-            let style = if is_right_child then "solid" else "dashed" in
-            fprintf chan "%s -> %s [style=%s];\n" p_id node_id style
-          | None -> ()
-        end;
-        write_dot_tree_edges left chan (Some node_id) false;
-        write_dot_tree_edges right chan (Some node_id) true
+    match tree with 
+    | Leaf b ->
+      let node_id = (Int64.to_string (List.hd n)) in
+      let shape = "box" in
+      let color = if b then "green" else "red" in
+      fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
+      begin
+        match parent_id with
+        | Some p_id ->
+          let style = if is_right_child then "solid" else "dashed" in
+          let line = p_id ^ " -> " ^ node_id ^ " [style=" ^ style ^ "];\n" in
+          (if not (List.mem line !c) then begin
+            c:= line::!c;
+            fprintf chan "%s" line;
+          end
+            
+          )
 
-  in 
+        | None -> ()
+      end;
+    | Node (feature, left, right) ->
+      let node_id = (Int64.to_string (List.hd n))^"."^(string_of_int feature) in
+      fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id feature;
+      begin
+        match parent_id with
+        | Some p_id ->
+          let style = if is_right_child then "solid" else "dashed" in
+          let line = p_id ^ " -> " ^ node_id ^ " [style=" ^ style ^ "];\n" in
+          (if not (List.mem line !c) then begin
+            c:= line::!c;
+            fprintf chan "%s" line
+          end
+          )
+        | None -> ()
+      end;
+      (* On continue la récursion sur les fils gauche et droit *)
+      write_dot_tree_edges left chan (Some node_id) false c;
+      write_dot_tree_edges right chan (Some node_id) true c
+
+in 
 
   let chan = open_out filename in
   (* Écriture de l'en-tête du fichier .dot *)
-  fprintf chan "strict digraph Tree {\n";
-  write_dot_tree_edges tree chan None false ;
+  fprintf chan "digraph Tree {\n";
+  match ldv with
+  | [] -> notCompressed tree chan None false
+  | _ -> write_dot_tree_edges tree chan None false (ref []);
+  (* Écriture de la fin du fichier .dot *)
   fprintf chan "}\n"; 
   close_out chan
 ;;
@@ -459,3 +476,6 @@ dot tree ldv "./dotFiles/tree_compressed.dot"
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed.dot -o ./jpgFiles/tree_compressed.jpg"
 
 
+type arbreDejaVus =
+  | Feuille
+  | Noeud of (bool * arbreDejaVus option * arbreDejaVus option)
