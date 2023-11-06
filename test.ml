@@ -5,7 +5,7 @@ module BigInt =
 struct
   type integer = Int64.t list (* liste d'entiers int64 *)
 
-  let get_tete (bigint : integer) : Int64.t = List.hd bigint
+  let get_tete (bigint : integer) : Int64.t = if bigint = [] then 0L else List.hd bigint
 
   let inserer_queue (nelem : Int64.t) (bigint : integer) : integer = bigint @ [nelem]
 
@@ -103,6 +103,17 @@ let completion (l : bool list) (n : int) : bool list =
       aux t (n-1) (acc @ [h])
   in aux l n [];;
 
+  let completion (l : bool list) (n : int) : bool list =
+    if n <= 0 then [] else
+    let rec aux (l : bool list) (n : int) (acc : bool list) : bool list = 
+      match l with 
+      | [] -> acc@(List.init n (fun _ -> false))
+      | h::t -> 
+        if n = 0 then acc else
+        aux t (n-1) (acc @ [h])
+    in aux l n [];;
+  
+
 (* Exemple *)
 print_string "\nQuestion 1.3 test\n";;
 let result = completion [false; true; true; false; false; true] 4;;
@@ -122,7 +133,7 @@ let rec pow (n : Int64.t) (e : int) : Int64.t =
 (* Question 1.4 *)
 let composition (l : bool list) : BigInt.integer =
   match l with     
-  | [false] -> [0L]
+  | [] -> []
   | _ ->
   (* parcourt la liste des bools avec pos la puissance de 2 à rajouter td 2^pos *)
   let rec aux (l : bool list) (acc : BigInt.integer) (pos : int): BigInt.integer = 
@@ -183,21 +194,6 @@ let result = table 38 10;;
 print_list result;;
 print_string "\n";;
 
-(* générant un grand entier aléatoire de n bits au maximum *)
-let genAlea (n : int) : BigInt.integer =
-  (* pour avoir des valeurs differentes a l'appel de Random.int64 *)
-  Random.self_init ();
-  (* genere la liste d'int64.t *)
-  let rec aux (n : int) (acc : BigInt.integer) : BigInt.integer = 
-    match n with
-    | n when n <= 0 -> acc
-    | n when n < 64 -> BigInt.inserer_queue (Random.int64 (pow 2L n)) acc
-    | n -> aux (n-64) (BigInt.inserer_queue (Random.int64 Int64.max_int) acc)
-  in
-  match n with
-  | n when n < 64 -> [Random.int64 (pow 2L n)]
-  | n -> aux n []
-;;
 
 (* générant un grand entier aléatoire de n bits au maximum *)
 let genAlea (n : int) : BigInt.integer =
@@ -322,7 +318,8 @@ print_string "\n";;
 type listeDejaVus = (BigInt.integer * decision_tree ) list
 
 let compressionParListe (dt : decision_tree) (ldv : listeDejaVus) : decision_tree * listeDejaVus =
-  let rec aux (dt : decision_tree) (ldv : listeDejaVus) : decision_tree * listeDejaVus =
+  let rec aux (dt : decision_tree) (ldv : listeDejaVus): decision_tree * listeDejaVus =
+    
     (* Calcul du nombre de feuilles dans l'arbre *)
     let n = composition (liste_feuilles dt) in
     (* Si l'arbre a déjà été visité, on renvoie le noeud correspondant *)
@@ -335,12 +332,15 @@ let compressionParListe (dt : decision_tree) (ldv : listeDejaVus) : decision_tre
       | Leaf b -> (dt, (n, dt)::ldv)
       | Node (pos, left, right) ->
         (* On compresse les fils et on donne au fils droit la ldv resultante de l'appel a la compression du fils gauche *)
-        let (dl, ld) = aux left ldv in
-        let (dr, lr) = aux right ld in
+        let (dl, ll) = aux left ldv in
+        let (dr, lr) = aux right ll in
         let new_node =
           match dr with
-          (* REGLE-Z : Si le fils droit est une feuille false, on compresse le noeud avec le fils gauche *)
-          | Leaf false -> Node (pos, dl, dl)
+          (* REGLE-Z : Si le fils droit est une feuille false*)
+          | Leaf false -> 
+          (match List.assoc_opt (composition (liste_feuilles dl)) lr with
+            | Some d -> d
+            | None -> Node(pos-1, dl, dl))
           | _ -> Node (pos, dl, dr)
         in
         (new_node, (n, new_node)::lr)
@@ -405,7 +405,7 @@ let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string)=
     (* Si l'arbre a été compressé *)
     match tree with 
     | Leaf b ->
-      let node_id = (Int64.to_string (List.hd n)) in
+      let node_id = (Int64.to_string (BigInt.get_tete n)) in
       let shape = "box" in
       let color = if b then "green" else "red" in
       fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
@@ -420,11 +420,10 @@ let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string)=
           end
             
           )
-
         | None -> ()
       end;
     | Node (feature, left, right) ->
-      let node_id = (Int64.to_string (List.hd n))^"."^(string_of_int feature) in
+      let node_id = (Int64.to_string (BigInt.get_tete n))^"."^(string_of_int feature) in
       fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id feature;
       begin
         match parent_id with
@@ -450,7 +449,6 @@ in
   match ldv with
   | [] -> notCompressed tree chan None false
   | _ -> write_dot_tree_edges tree chan None false (ref []);
-  (* Écriture de la fin du fichier .dot *)
   fprintf chan "}\n"; 
   close_out chan
 ;;
@@ -471,11 +469,85 @@ dot result [] "./dotFiles/tree.dot"
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree.dot -o ./jpgFiles/tree.jpg"
 let (tree, ldv) = compressionParListe result [];;
 dot tree ldv "./dotFiles/tree_compressed.dot" 
+let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed.dot -o ./jpgFiles/tree_compressed.jpg";;
 
+
+print_string "\nQuestion 3.2 test\n";;
+let mtable = (decomposition [28L] );;
+print_string "Table : ";;
+print_list mtable;;
+print_string "\n";;
+let result = cons_arbre mtable;;
+print_string "Result : ";;
+print_tree result;;
+print_string "\n";;
+dot result [] "./dotFiles/tree2.dot" 
 (* create jpg *)
-let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed.dot -o ./jpgFiles/tree_compressed.jpg"
+let _ = Sys.command "dot -Tjpg ./dotFiles/tree2.dot -o ./jpgFiles/tree2.jpg"
+let (tree, ldv) = compressionParListe result [];;
+dot tree ldv "./dotFiles/tree_compressed2.dot" 
+let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed2.dot -o ./jpgFiles/tree_compressed2.jpg";;
+
+let rec powInt (n : int) (e : int) : int =
+  if e = 0 then 1
+  else if e mod 2 = 0 then powInt (n * n) (e / 2)
+  else n * (powInt n (e - 1))
+(* Step 1: Generate a random truth table of size n *)
+let gen_table (n : int) : bool list list =
+  let rec aux (n : int) (acc : bool list list) : bool list list =
+    match n with
+    | n when n <= 0 -> acc
+    | n -> aux (n-1) ((List.init (powInt 2 n) (fun i -> completion (decomposition [Int64.of_int i]) n))) @ acc
+  in
+  aux n []
+(* ;;
+
+(* Step 2: Construct the decision tree from the truth table *)
+let construct_tree (table : bool list) : decision_tree =
+  cons_arbre table
+;;
+
+(* Step 3: Compress the decision tree and return its size *)
+let compress_tree_size (tree : decision_tree) : int =
+  let (compressed_tree, _) = compressionParListe tree [] in
+  let rec count_nodes (tree : decision_tree) : int =
+    match tree with
+    | Leaf _ -> 1
+    | Node (_, left, right) -> 1 + count_nodes left + count_nodes right
+  in
+  count_nodes compressed_tree
+;;
+(* Step 4: Repeat steps 1-3 a large number of times *)
+let simulate_compression (n : int) (num_trials : int) : int list =
+  let tables = gen_table n in
+  let rec aux (tables : bool list list) (num_trials : int) (acc : int list) : int list =
+    match num_trials with
+    | num_trials when num_trials <= 0 -> acc
+    | num_trials ->
+      let table = List.hd tables in
+      let tree = construct_tree table in
+      let size = compress_tree_size tree in
+      aux (List.tl tables) (num_trials-1) (size::acc)
+  in
+  aux tables num_trials []
+;;
 
 
-type arbreDejaVus =
-  | Feuille
-  | Noeud of (bool * arbreDejaVus option * arbreDejaVus option)
+
+(* Step 5: Collect the sizes of the compressed trees and calculate their frequency distribution *)
+let frequency_distribution (sizes : int list) : (int * float) list =
+  let total = List.length sizes in
+  let freqs = List.fold_left (fun acc size -> 
+    let count = try List.assoc size acc with Not_found -> 0 in
+    (size, count + 1)
+    :: List.remove_assoc size acc) [] sizes in
+  List.map (fun (size, count) -> (size, float_of_int count /. float_of_int total)) freqs
+  ;;
+(* Step 6: Plot the frequency distribution to visualize the probability distribution of compressed tree sizes *)
+(* This step is not implemented in OCaml, as it requires external libraries for plotting. *)
+
+(* Example usage *)
+let sizes = simulate_compression 10 10000 in
+let freqs = frequency_distribution sizes in
+print_string "Compressed tree size\tProbability\n";
+List.iter (fun (size, prob) -> Printf.printf "%d\t\t\t%f\n" size prob) freqs;; *)
