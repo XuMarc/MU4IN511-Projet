@@ -399,7 +399,7 @@ let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string)=
         notCompressed left chan (Some node_id) false;
         notCompressed right chan (Some node_id) true
       in  
-  let rec write_dot_tree_edges (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) (c : string list ref)=
+  let rec compressedTreeDot (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) (c : string list ref)=
     (* Calcul du nombre de feuilles dans l'arbre *)
     let n = (composition (liste_feuilles tree)) in
     (* Si l'arbre a été compressé *)
@@ -438,8 +438,8 @@ let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string)=
         | None -> ()
       end;
       (* On continue la récursion sur les fils gauche et droit *)
-      write_dot_tree_edges left chan (Some node_id) false c;
-      write_dot_tree_edges right chan (Some node_id) true c
+      compressedTreeDot left chan (Some node_id) false c;
+      compressedTreeDot right chan (Some node_id) true c
 
 in 
 
@@ -448,7 +448,7 @@ in
   fprintf chan "digraph Tree {\n";
   match ldv with
   | [] -> notCompressed tree chan None false
-  | _ -> write_dot_tree_edges tree chan None false (ref []);
+  | _ -> compressedTreeDot tree chan None false (ref []);
   fprintf chan "}\n"; 
   close_out chan
 ;;
