@@ -308,38 +308,36 @@ print_string "\n";;
 (* Exercice 3 : Compression de l'arbre de décision et ZDD *)
 type listeDejaVus = (BigInt.integer * decision_tree ) list
 
+
 let compressionParListe (dt : decision_tree) (ldv : listeDejaVus) : decision_tree * listeDejaVus =
   let rec aux (dt : decision_tree) (ldv : listeDejaVus): decision_tree * listeDejaVus =
-    
-    (* Calcul du nombre associé aux feuilles dans l'arbre *)
+    (* calcul du nombre associé *)
     let n = composition (liste_feuilles dt) in
-    (* Si l'arbre a déjà été visité, on renvoie le noeud correspondant *)
-    match List.assoc_opt n ldv with
-    | Some d -> (d, ldv)
-    (* Sinon, on continue la compression *)
-    | None ->
-      match dt with
-      (* Si le noeud est une feuille, on renvoie le noeud tel quel *)
-      | Leaf b -> (dt, (n, dt)::ldv)
-      | Node (pos, left, right) ->
-        (* On compresse les fils et on donne au fils droit la ldv resultante 
-           de l'appel a la compression du fils gauche *)
-        let (dl, ll) = aux left ldv in
-        let (dr, lr) = aux right ll in
-        let new_node =
-          match dr with
-          (* REGLE-Z : Si le fils droit est une feuille false*)
-          | Leaf false -> 
-          (match List.assoc_opt (composition (liste_feuilles dl)) lr with
-            | Some d -> d
-            | None -> Node(pos-1, dl, dl))
-          | _ -> Node (pos, dl, dr)
-        in
-        
-        (new_node, (n, new_node)::lr)
-  in
-  aux dt ldv
+    match dt with 
+    | Leaf b -> 
+      (* on regarde si la feuille existe déja *)
+      (match List.assoc_opt n ldv with 
+        |Some d -> d, ldv
+        |None -> dt, (n, dt)::ldv)
+    | Node (pos, left, right) -> 
+      let leftT, leftLdv = aux left ldv in
+      let rightT, rightLdv = aux right leftLdv in
+      (match List.assoc_opt n rightLdv with 
+        |Some d -> d,  rightLdv
+        | None -> 
+          (match rightT with 
+            | Leaf false -> 
+              (* recherche du noeud a supprimer *)
+              
+              Node(pos-1, leftT, leftT), (n, Node(pos-1, leftT, leftT))::rightLdv
+            | _ -> Node (pos, leftT, rightT), (n, Node (pos, leftT, rightT))::rightLdv
+          )
+      )
+
+  in aux dt ldv
 ;;
+
+
 (* Exemple *)
 print_string "\nQuestion 3.1 test\n";;
 let mtable = completion (decomposition [25899L]) 16;;
@@ -430,7 +428,7 @@ let rec compressedTreeDot (tree : decision_tree) (chan : out_channel) (parent_id
     end;
     (* On continue la récursion sur les fils gauche et droit *)
     compressedTreeDot left chan (Some node_id) false c;
-    compressedTreeDot right chan (Some node_id) true  
+    compressedTreeDot right chan (Some node_id) true c
 ;;
 
 
@@ -466,7 +464,7 @@ let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed.dot -o ./jpgFiles/tree
 
 
 print_string "\nQuestion 3.2 test\n";;
-let mtable = completion (decomposition [21L] ) 8;;
+let mtable = completion (decomposition [0L; 1L] ) 128 ;;
 print_string "Table : ";;
 print_list mtable;;
 print_string "\n";;
@@ -480,6 +478,21 @@ let _ = Sys.command "dot -Tjpg ./dotFiles/tree2.dot -o ./jpgFiles/tree2.jpg"
 let (tree, ldv) = compressionParListe result [];;
 dot tree ldv "./dotFiles/tree_compressed2.dot" 
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed2.dot -o ./jpgFiles/tree_compressed2.jpg";;
+
+let mtable = completion (decomposition [21L] ) 8 ;;
+print_string "Table : ";;
+print_list mtable;;
+print_string "\n";;
+let result = cons_arbre mtable;;
+print_string "Result : ";;
+print_tree result;;
+print_string "\n";;
+dot result [] "./dotFiles/tree3.dot" 
+(* create jpg *)
+let _ = Sys.command "dot -Tjpg ./dotFiles/tree3.dot -o ./jpgFiles/tree3.jpg"
+let (tree, ldv) = compressionParListe result [];;
+dot tree ldv "./dotFiles/tree_compressed3.dot" 
+let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed3.dot -o ./jpgFiles/tree_compressed3.jpg";;
 
 (* 
 let count_nodes (dt : decision_tree) : int =
