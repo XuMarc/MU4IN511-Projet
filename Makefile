@@ -1,7 +1,7 @@
 OCAMLC = ocamlc
-SRC = test.ml
+SRC = projet.ml
 OBJ = $(SRC:.ml=.cmo)
-EXE = exec
+EXE = projet
 
 all: $(EXE)
 
