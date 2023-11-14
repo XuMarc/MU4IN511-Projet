@@ -360,28 +360,27 @@ open Printf
 
 let rec stringB (n : BigInt.integer) : string =
   match n with
-  | [] -> ""
+  | [] -> "0"
   | h::t -> Int64.to_string h ^ stringB t
 ;;
 
-let rec notCompressed (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) =
-  let n = composition (liste_feuilles tree) in
+let rec notCompressed (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool)=
   match tree with
   | Leaf b ->
-    let node_id = if stringB n = "" then "0" else stringB n in
-    let shape = "box" in
-    let color = if b then "green" else "red" in
-    fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
     begin
       match parent_id with
       | Some p_id ->
+        let node_id = string_of_int (Random.int 1000000000) in
+        let shape = "box" in
+        let color = if b then "green" else "red" in
+        fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
         let style = if is_right_child then "solid" else "dashed" in
         let line = p_id ^ " -> " ^ node_id ^ " [style=" ^ style ^ "];\n" in
         fprintf chan "%s" line ;
       | None -> ()
     end
   | Node (pos, left, right) ->
-    let node_id = (stringB n)^"."^(string_of_int pos) in
+    let node_id = string_of_int (Random.int 1000000000) in
     fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id pos;
     begin
       match parent_id with
@@ -442,14 +441,12 @@ let rec compressedTreeDot (tree : decision_tree) (chan : out_channel) (parent_id
 
 
 
-let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string) : unit= 
+let dot (tree : decision_tree) (b : bool) (filename: string) : unit= 
 
   let chan = open_out filename in
   (* Écriture de l'en-tête du fichier .dot *)
   fprintf chan "digraph Tree {\n";
-  match ldv with
-  | [] -> notCompressed tree chan None false
-  | _ -> compressedTreeDot tree chan None false [];
+  if b then compressedTreeDot tree chan None false [] else notCompressed tree chan None false;
   fprintf chan "}\n"; 
   close_out chan
 ;;
@@ -465,11 +462,11 @@ let result = cons_arbre mtable;;
 print_string "Result : ";;
 print_tree result;;
 print_string "\n";;
-dot result [] "./dotFiles/tree.dot" 
+dot result false "./dotFiles/tree.dot" 
 (* create jpg *)
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree.dot -o ./jpgFiles/tree.jpg"
 let (tree, ldv) = compressionParListe result [];;
-dot tree ldv "./dotFiles/tree_compressed.dot" 
+dot tree true "./dotFiles/tree_compressed.dot" 
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed.dot -o ./jpgFiles/tree_compressed.jpg";;
 
 
@@ -482,11 +479,11 @@ let result = cons_arbre mtable;;
 print_string "Result : ";;
 print_tree result;;
 print_string "\n";;
-dot result [] "./dotFiles/tree2.dot" 
+dot result false "./dotFiles/tree2.dot" 
 (* create jpg *)
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree2.dot -o ./jpgFiles/tree2.jpg"
 let (tree, ldv) = compressionParListe result [];;
-dot tree ldv "./dotFiles/tree_compressed2.dot" 
+dot tree true "./dotFiles/tree_compressed2.dot" 
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed2.dot -o ./jpgFiles/tree_compressed2.jpg";;
 
 let mtable = completion (decomposition [21L] ) 8 ;;
@@ -497,11 +494,11 @@ let result = cons_arbre mtable;;
 print_string "Result : ";;
 print_tree result;;
 print_string "\n";;
-dot result [] "./dotFiles/tree3.dot" 
+dot result false "./dotFiles/tree3.dot" 
 (* create jpg *)
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree3.dot -o ./jpgFiles/tree3.jpg"
 let (tree, ldv) = compressionParListe result [];;
-dot tree ldv "./dotFiles/tree_compressed3.dot" 
+dot tree true "./dotFiles/tree_compressed3.dot" 
 let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed3.dot -o ./jpgFiles/tree_compressed3.jpg";;
 
 (* 
