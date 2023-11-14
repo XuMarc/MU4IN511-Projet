@@ -322,15 +322,15 @@ let compressionParListe (dt : decision_tree) (ldv : listeDejaVus) : decision_tre
     | Node (pos, left, right) -> 
       let leftT, leftLdv = aux left ldv in
       let rightT, rightLdv = aux right leftLdv in
+      (* on regarde si le noeud existe déja *)
       (match List.assoc_opt n rightLdv with 
         |Some d -> d,  rightLdv
         | None -> 
           (match rightT with 
             | Leaf false -> 
-              (* recherche du noeud a supprimer *)
-              
               Node(pos-1, leftT, leftT), (n, Node(pos-1, leftT, leftT))::rightLdv
-            | _ -> Node (pos, leftT, rightT), (n, Node (pos, leftT, rightT))::rightLdv
+            | _ -> 
+              Node(pos, leftT, rightT), (n, Node(pos, leftT, rightT))::rightLdv
           )
       )
 
@@ -358,46 +358,17 @@ print_string "\n";;
 
 open Printf
 
-
-let rec notCompressed (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool)=
-  (* Si l'arbre n'a pas été compressé *)
-  if ldv = [] then
-    match tree with
-    | Leaf b ->
-      let node_id = string_of_int (Random.int 100000) in
-      let shape = "box" in
-      let color = if b then "green" else "red" in
-      fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
-      (* Si le noeud a un parent, on écrit le lien entre le parent et le noeud *)
-      begin
-        match parent_id with
-        | Some p_id ->
-          let style = if is_right_child then "solid" else "dashed" in
-          fprintf chan "%s -> %s [style=%s];\n" p_id node_id style
-        | None -> ()
-      end
-    | Node (pos, left, right) ->
-      let node_id = string_of_int (Random.int 100000) in
-      fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id pos;
-      begin
-        match parent_id with
-        | Some p_id ->
-          let style = if is_right_child then "solid" else "dashed" in
-          fprintf chan "%s -> %s [style=%s];\n" p_id node_id style
-        | None -> ()
-      end;
-      (* On continue la récursion sur les fils gauche et droit *)
-      notCompressed left chan (Some node_id) false;
-      notCompressed right chan (Some node_id) true
+let rec stringB (n : BigInt.integer) : string =
+  match n with
+  | [] -> ""
+  | h::t -> Int64.to_string h ^ stringB t
 ;;
 
-let rec compressedTreeDot (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) (c : string list ref)=
-  (* Calcul du nombre de feuilles dans l'arbre *)
-  let n = (composition (liste_feuilles tree)) in
-  (* Si l'arbre a été compressé *)
-  match tree with 
+let rec notCompressed (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) =
+  let n = composition (liste_feuilles tree) in
+  match tree with
   | Leaf b ->
-    let node_id = (Int64.to_string (BigInt.get_tete n)) in
+    let node_id = if stringB n = "" then "0" else stringB n in
     let shape = "box" in
     let color = if b then "green" else "red" in
     fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
@@ -406,40 +377,79 @@ let rec compressedTreeDot (tree : decision_tree) (chan : out_channel) (parent_id
       | Some p_id ->
         let style = if is_right_child then "solid" else "dashed" in
         let line = p_id ^ " -> " ^ node_id ^ " [style=" ^ style ^ "];\n" in
-        (if not (List.mem line !c) then begin
-          c:= line::!c;
-          fprintf chan "%s" line;
-        end)
+        fprintf chan "%s" line ;
       | None -> ()
-    end;
-  | Node (feature, left, right) ->
-    let node_id = (Int64.to_string (BigInt.get_tete n))^"."^(string_of_int feature) in
-    fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id feature;
+    end
+  | Node (pos, left, right) ->
+    let node_id = (stringB n)^"."^(string_of_int pos) in
+    fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id pos;
     begin
       match parent_id with
       | Some p_id ->
         let style = if is_right_child then "solid" else "dashed" in
         let line = p_id ^ " -> " ^ node_id ^ " [style=" ^ style ^ "];\n" in
-        (if not (List.mem line !c) then begin
-          c:= line::!c;
-          fprintf chan "%s" line
-        end)
+        fprintf chan "%s" line ;
       | None -> ()
     end;
-    (* On continue la récursion sur les fils gauche et droit *)
-    compressedTreeDot left chan (Some node_id) false c;
-    compressedTreeDot right chan (Some node_id) true c
+    notCompressed left chan (Some node_id) false;
+    notCompressed right chan (Some node_id) true
 ;;
 
 
-let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string)= 
+
+let rec compressedTreeDot (tree : decision_tree) (chan : out_channel) (parent_id : string option) (is_right_child : bool) (c : string list) =
+  (* Calcul du nombre de feuilles dans l'arbre *)
+  let n = composition (liste_feuilles tree) in
+  (* Si l'arbre a été compressé *)
+  match tree with 
+  | Leaf b ->
+    let node_id = stringB n in
+    let shape = "box" in
+    let color = if b then "green" else "red" in
+    fprintf chan "%s [label=\"%b\", shape=%s, color=%s];\n" node_id b shape color;
+    begin
+      match parent_id with
+      | Some p_id ->
+        let style = if is_right_child then "solid" else "dashed" in
+        let line = p_id ^ " -> " ^ node_id ^ " [style=" ^ style ^ "];\n" in
+        (* On vérifie que le lien n'a pas déjà été écrit *)
+        if (List.mem line c) then () else 
+          fprintf chan "%s" line ;
+      | None -> ()
+    end
+  | Node (pos, left, right) -> 
+    let node_id = (stringB n)^"."^(string_of_int pos) in
+    fprintf chan "%s [label=\"%d\", shape=ellipse];\n" node_id pos;
+    
+    begin 
+      match parent_id with 
+      | Some p_id ->
+        let style = if is_right_child then "solid" else "dashed" in
+        let line = p_id ^ " -> " ^ node_id ^ " [style=" ^ style ^ "];\n" in
+        (* On vérifie que le lien n'a pas déjà été écrit *)
+        if List.mem node_id c then () else 
+          fprintf chan "%s" line ;
+          compressedTreeDot left chan (Some node_id) false (node_id::c);
+          compressedTreeDot right chan (Some node_id) true (node_id::c)
+      | None -> if pos= 1 then 
+        compressedTreeDot left chan (Some node_id) false c;
+        compressedTreeDot right chan (Some node_id) true c
+    end;
+    (* On continue la récursion sur les fils gauche et droit *)
+
+
+;;
+
+
+
+let dot (tree : decision_tree) (ldv : listeDejaVus) (filename: string) : unit= 
 
   let chan = open_out filename in
   (* Écriture de l'en-tête du fichier .dot *)
   fprintf chan "digraph Tree {\n";
   match ldv with
   | [] -> notCompressed tree chan None false
-  | _ -> compressedTreeDot tree chan None false (ref []);
+  | _ -> compressedTreeDot tree chan None false [];
   fprintf chan "}\n"; 
   close_out chan
 ;;
@@ -464,7 +474,7 @@ let _ = Sys.command "dot -Tjpg ./dotFiles/tree_compressed.dot -o ./jpgFiles/tree
 
 
 print_string "\nQuestion 3.2 test\n";;
-let mtable = completion (decomposition [0L; 1L] ) 128 ;;
+let mtable = completion (decomposition [0L; 1L]) 128 ;;
 print_string "Table : ";;
 print_list mtable;;
 print_string "\n";;
